@@ -1,0 +1,219 @@
+{
+  "name": "Telegram AQI + Weather Bot (n8n Workflow)",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const aqiData = $items(\"AQI Request\")[0].json;      // Change to your AQI node name\nconst weatherData = $items(\"Weather Request\")[0].json;  // Change to your Weather node name\n\n// Extract AQI\nconst aqi = aqiData?.data?.aqi || \"N/A\";\n\n// Get AQI Category\nfunction getAQICategory(aqi) {\n  if (aqi <= 50) return {cat: \"Good 😊\", adv: \"The air quality is good. Outdoor activities are safe.\"};\n  if (aqi <= 100) return {cat: \"Moderate 😐\", adv: \"Air quality is acceptable. Sensitive individuals should be cautious.\"};\n  if (aqi <= 150) return {cat: \"Unhealthy for Sensitive Groups 😕\", adv: \"Sensitive people should wear masks outdoors.\"};\n  if (aqi <= 200) return {cat: \"Unhealthy 😷\", adv: \"Limit outdoor exposure and consider wearing a mask.\"};\n  if (aqi <= 300) return {cat: \"Very Unhealthy 😫\", adv: \"Avoid going outside and keep windows closed.\"};\n  return {cat: \"Hazardous ☠️\", adv: \"Do not go outside. Take immediate health safety precautions.\"};\n}\n\nconst {cat, adv} = getAQICategory(aqi);\n\n// Extract Weather Data\nconst temp = weatherData.main?.temp || \"N/A\";\nconst humidity = weatherData.main?.humidity || \"N/A\";\nconst desc = weatherData.weather?.[0]?.description || \"N/A\";\n\n// Get city name\nconst cityName = aqiData?.data?.city?.name || weatherData?.name || \"Unknown City\";\n\nconst message = `\n🌍 *City:* ${cityName}\n\n🌫 *Air Quality Index (AQI):* ${aqi}\n• *Status:* ${cat}\n• *Advice:* ${adv}\n\n🌦 *Weather Status:*\n• *Temperature:* ${temp}°C\n• *Humidity:* ${humidity}%\n• *Condition:* ${desc}\n\nStay safe and take care of your health!\n`;\n\nreturn [\n  {\n    json: {\n      chatId: $json.chatId, // Get chat id from previous nodes\n      message\n    }\n  }\n];\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        352,
+        -336
+      ],
+      "id": "3e1e8b6e-fe35-4402-9e83-328d3fe3208c",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -464,
+        -336
+      ],
+      "id": "8c0c78f1-3282-4962-97e4-d80885589c62",
+      "name": "Telegram Trigger",
+      "webhookId": "4d20ad2c-0aef-4f7b-b6cb-0a102dd177ba",
+      "credentials": {
+        "telegramApi": {
+          "id": "GuqWtxJX4srHabOS",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get city from Telegram message text\nlet city = $json.message.text || \"\";\n\n// Clean formatting\ncity = city.trim().toLowerCase();\ncity = city.charAt(0).toUpperCase() + city.slice(1);\n\nreturn [\n  {\n    json: {\n      city\n    }\n  }\n];\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -288,
+        -336
+      ],
+      "id": "cede9130-714c-49f3-866a-280b85d21ac8",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "chatId": "8261275732",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        528,
+        -336
+      ],
+      "id": "018c0bbb-d8b3-4206-ac4c-6559d3b7c1c1",
+      "name": "Send a text message",
+      "webhookId": "418be561-e304-46a7-977f-f6d8466beed8",
+      "credentials": {
+        "telegramApi": {
+          "id": "GuqWtxJX4srHabOS",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        160,
+        -336
+      ],
+      "id": "a4e305f1-424e-4540-8089-814b514f140e",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.waqi.info/feed/{{$json.city}}/?token=e70f7c25f66e3b167f7369ace51ccc704ef60a59",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -64,
+        -432
+      ],
+      "id": "de439161-65e1-4d3a-9738-9005f748696c",
+      "name": "AQI Request"
+    },
+    {
+      "parameters": {
+        "url": "https://api.openweathermap.org/data/2.5/weather?q=Karachi&appid=397c0b428b2d41574d17886aa6997e40&units=metric",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -64,
+        -240
+      ],
+      "id": "fd37a075-c203-4ba1-b6ce-0fa8eba65077",
+      "name": "Weather Request"
+    },
+    {
+      "parameters": {
+        "content": "",
+        "height": 480,
+        "width": 1168,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -496,
+        -560
+      ],
+      "typeVersion": 1,
+      "id": "fefbb331-f8db-4082-97da-6bd9e15d34cf",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "AQI Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Weather Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AQI Request": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weather Request": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "f24417b2-0367-4e4f-af90-eb715fd13403",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "45894b37f1d766687eb41e905a1ede6c1600e57f0ac4faa90c2f341924bdcb9d"
+  },
+  "id": "2TbQf6b0Yjclo0IG",
+  "tags": []
+}
